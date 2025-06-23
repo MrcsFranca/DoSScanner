@@ -3,6 +3,7 @@
 #include <ctime>
 #include <vector>
 #include <queue>
+#include <fstream>
 
 using namespace std;
 
@@ -13,32 +14,52 @@ struct requestData {
     time_t timeStamp;
 };
 
+class FileManager {
+    public:
+        void logRequest(requestData req) {
+            ofstream log;
+            try {
+                log.open("requests.txt", ios::app);
+                if(!log) {
+                    throw new runtime_error("erro");
+                } else {
+                    log << req.ip << " -- " << ctime(&req.timeStamp) << endl;
+                }
+            } catch(runtime_error) {
+                cout << "erro ao abrir arquivo de ips bloqueados" << endl;
+            }
+            log.close();
+        }
+};
+
 class Detector {
     private:
-            queue<requestData> filaRequisicoes;
+            queue<requestData> requestQueue;
     public:
         void saveRequest(requestData req) {
             time_t now = time(NULL);
             req.timeStamp = now;
-            filaRequisicoes.push(req);
+            requestQueue.push(req);
 
-            if(filaRequisicoes.size() > QUEUE_LIMIT) {
-                filaRequisicoes.pop();
+            if(requestQueue.size() > QUEUE_LIMIT) {
+                requestQueue.pop();
             }
             
             cout << "Requisição registrada de " << req.ip << " em " << ctime(&req.timeStamp) << endl;
+            FileManager manager;
+            manager.logRequest(req);
             verifyDos(req);
         }
 
         void verifyDos(requestData req) {
-            if(filaRequisicoes.size() < IP_LIMIT) {
+            if(requestQueue.size() < IP_LIMIT) {
                 return;
             }
 
             vector<requestData> aux;
-            while(!filaRequisicoes.empty()) {
-                aux.push_back(filaRequisicoes.front());
-                filaRequisicoes.pop();
+            while(!requestQueue.empty()) {
+                aux.push_back(requestQueue.front());
+                requestQueue.pop();
             }
             
             int numberOfResquests = 1;
@@ -59,6 +80,8 @@ class Detector {
             }
         }
 };
+
+
 
 int main() {
     Detector scanner;
